@@ -59,11 +59,11 @@ module hft_top_tb;
     rst = 0;
     @(posedge clk);
 
-    push_add(16'd0, 64'd1, 32'd100, 32'd10000);
-    push_add(16'd1, 64'd2, 32'd100, 32'd20000);
-    push_add(16'd2, 64'd3, 32'd100, 32'd30000);
-    push_add(16'd3, 64'd4, 32'd100, 32'd40000);
-    push_add(16'd0, 64'd5, 32'd100, 32'd15000);  // moves stock 0's best price up
+    push_add(TARGET_LOCATES[0], 64'd1, 32'd100, 32'd10000);
+    push_add(TARGET_LOCATES[1], 64'd2, 32'd100, 32'd20000);
+    push_add(TARGET_LOCATES[2], 64'd3, 32'd100, 32'd30000);
+    push_add(TARGET_LOCATES[3], 64'd4, 32'd100, 32'd40000);
+    push_add(TARGET_LOCATES[0], 64'd5, 32'd100, 32'd15000);  // moves stock 0's best price up
 
     foreach (queue[i]) begin
       @(posedge clk);

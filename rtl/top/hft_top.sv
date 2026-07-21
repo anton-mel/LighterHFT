@@ -30,10 +30,14 @@ module hft_top #(
       .best_price_idx(best_price_idx), .best_price(sample_price), .best_valid(best_valid)
   );
 
-  logic all_valid;
+  // Sample as soon as any single stock has a book -- waiting for all NUM_STOCKS to be quoted
+  // simultaneously can stall the whole pipeline indefinitely on a data slice where one name
+  // hasn't traded yet. Stocks without a price yet just contribute zero return/covariance
+  // (see covariance_engine's last_price==0 guard) until they show up.
+  logic any_valid;
   always_comb begin
-    all_valid = 1'b1;
-    for (int i = 0; i < NUM_STOCKS; i++) all_valid &= best_valid[i];
+    any_valid = 1'b0;
+    for (int i = 0; i < NUM_STOCKS; i++) any_valid |= best_valid[i];
   end
 
   logic [31:0] sample_counter;
@@ -47,14 +51,14 @@ module hft_top #(
       cov_start <= 1'b0;
       if (sample_counter == SAMPLE_PERIOD - 1) begin
         sample_counter <= 32'd0;
-        if (all_valid) cov_start <= 1'b1;
+        if (any_valid) cov_start <= 1'b1;
       end else begin
         sample_counter <= sample_counter + 32'd1;
       end
     end
   end
 
-  fx_t cov_matrix [0:NUM_STOCKS-1][0:NUM_STOCKS-1];
+  wfx_t cov_matrix [0:NUM_STOCKS-1][0:NUM_STOCKS-1];
   logic cov_done, cov_overflow;
   fx_t mean_unused [0:NUM_STOCKS-1];
 
@@ -79,8 +83,12 @@ module hft_top #(
       .done(solver_done), .weights(weights)
   );
 
-  logic [PRICE_W+31:0]      target_shares [0:NUM_STOCKS-1];
-  logic [PRICE_W+31:0]      prev_shares   [0:NUM_STOCKS-1];
+  // Signed: a min-variance solve can call for a negative weight (a short position), so a
+  // target share count can legitimately be negative -- forcing these unsigned corrupted the
+  // sign (verified against real NASDAQ data: fills with ~2^32-magnitude share counts, the
+  // classic sign of a negative value zero-extended and reinterpreted as huge and positive).
+  logic signed [PRICE_W+31:0] target_shares [0:NUM_STOCKS-1];
+  logic signed [PRICE_W+31:0] prev_shares   [0:NUM_STOCKS-1];
   logic                     sizing_valid;
   int                       size_idx;
 
@@ -111,17 +119,23 @@ module hft_top #(
         end
 
         Z_SIZE: begin
-          automatic logic signed [FX_W+63:0] notional;
-          automatic logic signed [FX_W+63:0] shares_signed;
-          notional      = $signed(weights[size_idx]) * $signed(64'(CAPITAL));
-          shares_signed = notional / $signed({1'b0, sample_price[size_idx], {FX_FRAC{1'b0}}});
-          target_shares[size_idx] <= shares_signed[PRICE_W+31:0];
+          // no price yet for this stock -- hold the prior target (no forced trade) instead
+          // of dividing by zero.
+          if (sample_price[size_idx] == 0) begin
+            target_shares[size_idx] <= prev_shares[size_idx];
+          end else begin
+            automatic logic signed [FX_W+63:0] notional;
+            automatic logic signed [FX_W+63:0] shares_signed;
+            notional      = $signed(weights[size_idx]) * $signed(64'(CAPITAL));
+            shares_signed = notional / $signed({1'b0, sample_price[size_idx], {FX_FRAC{1'b0}}});
+            target_shares[size_idx] <= shares_signed[PRICE_W+31:0];
+          end
           size_state <= Z_ISSUE;
         end
 
         Z_ISSUE: begin
           automatic logic signed [PRICE_W+32:0] delta;
-          delta = $signed({1'b0, target_shares[size_idx]}) - $signed({1'b0, prev_shares[size_idx]});
+          delta = $signed(target_shares[size_idx]) - $signed(prev_shares[size_idx]);
           if (delta != 0 && !gen_busy) begin
             order_stock     <= STOCK_IDX_W'(size_idx);
             order_side      <= (delta < 0);
