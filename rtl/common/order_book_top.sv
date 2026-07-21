@@ -11,13 +11,9 @@ module order_book_top (
   genvar i;
   generate
     for (i = 0; i < NUM_STOCKS; i++) begin : g_book
-      order_event_t evt_masked;
-      assign evt_masked       = evt;
-      assign evt_masked.valid = evt.valid && (evt.stock_idx == i);
-
-      order_book book (
+      order_book #(.STOCK_ID(i)) book (
           .clk(clk), .rst(rst),
-          .evt(evt_masked),
+          .evt(evt),
           .best_price_idx(best_price_idx[i]),
           .best_valid(best_valid[i])
       );

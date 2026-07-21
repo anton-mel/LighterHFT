@@ -19,7 +19,8 @@ module order_book_tb;
 
   task automatic send(input book_op_e op, input logic [63:0] oid,
                        input logic [31:0] price, input logic [31:0] shares);
-    evt.valid    <= 1'b1;
+    evt.valid     <= 1'b1;
+    evt.stock_idx <= '0;
     evt.op       <= op;
     evt.order_id <= oid;
     evt.price    <= price;

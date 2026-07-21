@@ -3,13 +3,18 @@ import hft_pkg::*;
 // Per-stock order book: direct-mapped order table (indexed by low bits of order_id) +
 // price_ladder for O(log PRICE_LEVELS) best-price tracking. Two-stage pipeline: stage 1
 // registers the request and reads the table; stage 2 acts on the read result.
-module order_book (
+module order_book #(
+    parameter int STOCK_ID = 0
+) (
     input  logic                    clk,
     input  logic                    rst,
     input  order_event_t            evt,
     output logic [PRICE_LVL_W-1:0]  best_price_idx,
     output logic                    best_valid
 );
+
+  logic evt_valid_here;
+  assign evt_valid_here = evt.valid && (evt.stock_idx == STOCK_ID);
 
   typedef struct packed {
     logic                   occupied;
@@ -35,7 +40,7 @@ module order_book (
 
   always_ff @(posedge clk) begin
     evt_q   <= evt;
-    valid_q <= evt.valid;
+    valid_q <= evt_valid_here;
     rd_slot <= table_mem[rd_addr];
   end
 
