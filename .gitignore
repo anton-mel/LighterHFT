@@ -16,3 +16,6 @@
 webtalk*
 vivado_pid*
 NA
+reports/
+xsim.dir/
+*.wdb
