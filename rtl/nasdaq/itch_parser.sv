@@ -85,7 +85,9 @@ module itch_parser (
 
           S_EMIT: begin
             automatic logic [ORDER_ID_W-1:0] oid;
+            automatic stock_match_t          m;
             oid = ORDER_ID_W'(be_bytes(payload, OFF_ORDER_ID, LEN_ORDER_ID));
+            m   = locate_to_idx({payload[0], payload[1]});
 
             if (data_valid) begin
               msg_len[15:8] <= data;
@@ -96,49 +98,53 @@ module itch_parser (
 
             unique case (msg_type)
               "A", "F": begin
-                evt.valid     <= 1'b1;
+                evt.valid     <= m.valid;
                 evt.op        <= OP_ADD;
-                evt.stock_idx <= locate_to_idx({payload[0], payload[1]});
+                evt.stock_idx <= m.idx;
                 evt.order_id  <= oid;
                 evt.buy_sell  <= (payload[OFF_BUYSELL_A] == "S");
                 evt.shares    <= SHARES_W'(be_bytes(payload, OFF_SHARES_A, LEN_QTY));
                 evt.price     <= PRICE_W'(be_bytes(payload, OFF_PRICE_A, LEN_QTY));
-                evt_valid     <= 1'b1;
+                evt_valid     <= m.valid;
               end
               "E", "C": begin
-                evt.valid    <= 1'b1;
-                evt.op       <= OP_EXECUTE;
-                evt.order_id <= oid;
-                evt.shares   <= SHARES_W'(be_bytes(payload, OFF_SHARES_EC, LEN_QTY));
-                evt_valid    <= 1'b1;
+                evt.valid     <= m.valid;
+                evt.op        <= OP_EXECUTE;
+                evt.stock_idx <= m.idx;
+                evt.order_id  <= oid;
+                evt.shares    <= SHARES_W'(be_bytes(payload, OFF_SHARES_EC, LEN_QTY));
+                evt_valid     <= m.valid;
               end
               "X": begin
-                evt.valid    <= 1'b1;
-                evt.op       <= OP_CANCEL;
-                evt.order_id <= oid;
-                evt.shares   <= SHARES_W'(be_bytes(payload, OFF_SHARES_EC, LEN_QTY));
-                evt_valid    <= 1'b1;
+                evt.valid     <= m.valid;
+                evt.op        <= OP_CANCEL;
+                evt.stock_idx <= m.idx;
+                evt.order_id  <= oid;
+                evt.shares    <= SHARES_W'(be_bytes(payload, OFF_SHARES_EC, LEN_QTY));
+                evt_valid     <= m.valid;
               end
               "D": begin
-                evt.valid    <= 1'b1;
-                evt.op       <= OP_DELETE;
-                evt.order_id <= oid;
-                evt_valid    <= 1'b1;
+                evt.valid     <= m.valid;
+                evt.op        <= OP_DELETE;
+                evt.stock_idx <= m.idx;
+                evt.order_id  <= oid;
+                evt_valid     <= m.valid;
               end
               "U": begin
                 // decompose replace into delete(old) this cycle, add(new) next cycle
-                evt.valid    <= 1'b1;
-                evt.op       <= OP_DELETE;
-                evt.order_id <= oid;
-                evt_valid    <= 1'b1;
+                evt.valid     <= m.valid;
+                evt.op        <= OP_DELETE;
+                evt.stock_idx <= m.idx;
+                evt.order_id  <= oid;
+                evt_valid     <= m.valid;
 
-                replace_add.valid     <= 1'b1;
+                replace_add.valid     <= m.valid;
                 replace_add.op        <= OP_ADD;
-                replace_add.stock_idx <= locate_to_idx({payload[0], payload[1]});
+                replace_add.stock_idx <= m.idx;
                 replace_add.order_id  <= ORDER_ID_W'(be_bytes(payload, OFF_NEW_ID_U, LEN_ORDER_ID));
                 replace_add.shares    <= SHARES_W'(be_bytes(payload, OFF_SHARES_U, LEN_QTY));
                 replace_add.price     <= PRICE_W'(be_bytes(payload, OFF_PRICE_U, LEN_QTY));
-                replace_pending       <= 1'b1;
+                replace_pending       <= m.valid;
               end
               default: ;
             endcase
