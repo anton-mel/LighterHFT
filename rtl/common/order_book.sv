@@ -14,8 +14,6 @@ module order_book #(
     output logic                    best_valid
 );
 
-  assign best_price = price_base + PRICE_W'(best_price_idx) * PRICE_W'(PRICE_TICK);
-
   logic evt_valid_here;
   assign evt_valid_here = evt.valid && (evt.stock_idx == STOCK_ID);
 
@@ -32,6 +30,8 @@ module order_book #(
   // how real low-latency books stay fine-grained without needing an absolute-price-sized ladder.
   logic [PRICE_W-1:0] price_base;
   logic               price_base_set;
+
+  assign best_price = price_base + PRICE_W'(best_price_idx) * PRICE_W'(PRICE_TICK);
 
   function automatic logic [PRICE_LVL_W-1:0] price_to_idx(input logic [PRICE_W-1:0] price,
                                                             input logic [PRICE_W-1:0] base);
