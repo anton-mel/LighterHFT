@@ -60,7 +60,7 @@ module covariance_engine (
 
         S_RETURNS: begin
           automatic logic signed [PRICE_W+FX_FRAC:0] ratio;
-          ratio = ($signed({1'b0, price[idx_i]}) <<< FX_FRAC) / $signed({1'b0, last_price[idx_i]});
+          ratio = $signed({1'b0, price[idx_i], {FX_FRAC{1'b0}}}) / $signed({1'b0, last_price[idx_i]});
           returns[idx_i] <= fx_t'(ratio) - ONE_FX;
           if (idx_i == NUM_STOCKS-1) begin
             idx_i <= 0;
