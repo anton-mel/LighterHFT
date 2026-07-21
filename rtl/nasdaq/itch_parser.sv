@@ -1,6 +1,9 @@
 import hft_pkg::*;
 
 // Frame contract: [len_hi][len_lo] big-endian byte count of (type+payload), then [type][payload...]
+// S_EMIT decodes the just-finished message and, in the same cycle, accepts the next message's
+// first byte if present -- so back-to-back messages need no dead cycle. Exception: the cycle
+// where a decomposed Order Replace's synthesized Add is emitted does cost one dead cycle.
 module itch_parser (
     input  logic         clk,
     input  logic         rst,
@@ -83,7 +86,14 @@ module itch_parser (
           S_EMIT: begin
             automatic logic [ORDER_ID_W-1:0] oid;
             oid = ORDER_ID_W'(be_bytes(payload, OFF_ORDER_ID, LEN_ORDER_ID));
-            state <= S_LEN0;
+
+            if (data_valid) begin
+              msg_len[15:8] <= data;
+              state         <= S_LEN1;
+            end else begin
+              state <= S_LEN0;
+            end
+
             unique case (msg_type)
               "A", "F": begin
                 evt.valid     <= 1'b1;

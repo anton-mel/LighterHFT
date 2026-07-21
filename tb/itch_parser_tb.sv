@@ -31,7 +31,7 @@ module itch_parser_tb;
       "B",                      // buy/sell
       8'h00, 8'h00, 8'h00, 8'd100, // shares
       "X", "X", "X", "X", "X", "X", "X", "X",  // stock ticker (unused)
-      8'h00, 8'h01, 8'hE2, 8'h48, // price = 123400
+      8'h00, 8'h01, 8'hE2, 8'h08, // price = 123400
 
       8'd0, 8'd19, "D",
       8'h00, 8'h05,
@@ -46,6 +46,12 @@ module itch_parser_tb;
       8'h00, 8'h00, 8'h00, 8'h00, 8'h00, 8'h00, 8'h00, 8'h42,
       8'h00, 8'h00, 8'h00, 8'd25
     };
+  end
+
+  initial begin
+    #100000;
+    $display("TIMEOUT");
+    $finish;
   end
 
   task automatic check(input string name, input logic cond);
