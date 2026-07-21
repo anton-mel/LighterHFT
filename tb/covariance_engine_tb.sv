@@ -6,8 +6,8 @@ module covariance_engine_tb;
   logic rst;
   logic [PRICE_W-1:0] price [0:NUM_STOCKS-1];
   logic start, done, overflow;
-  fx_t mean [0:NUM_STOCKS-1];
-  fx_t cov  [0:NUM_STOCKS-1][0:NUM_STOCKS-1];
+  fx_t  mean [0:NUM_STOCKS-1];
+  wfx_t cov  [0:NUM_STOCKS-1][0:NUM_STOCKS-1];
 
   int errors = 0;
 
@@ -59,7 +59,7 @@ module covariance_engine_tb;
 
     for (int i = 0; i < NUM_STOCKS; i++)
       for (int j = 0; j < NUM_STOCKS; j++)
-        check($sformatf("cov_zero_%0d_%0d", i, j), cov[i][j] == 16'sd0);
+        check($sformatf("cov_zero_%0d_%0d", i, j), cov[i][j] == '0);
 
     if (errors == 0) $display("ALL TESTS PASSED");
     else $display("%0d TEST(S) FAILED", errors);

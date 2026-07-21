@@ -4,7 +4,7 @@ module qr_solver_tb;
 
   logic clk = 0;
   logic rst;
-  fx_t cov [0:NUM_STOCKS-1][0:NUM_STOCKS-1];
+  wfx_t cov [0:NUM_STOCKS-1][0:NUM_STOCKS-1];
   logic start, done;
   fx_t weights [0:NUM_STOCKS-1];
 
@@ -41,10 +41,10 @@ module qr_solver_tb;
 
     // diagonal covariance (no correlation): min-variance weights should be
     // proportional to 1/variance -- 1.0, 0.8, 1.2, 0.6 -> weights below
-    cov[0][0] = 16'sd16384;  // 1.0
-    cov[1][1] = 16'sd13107;  // 0.8
-    cov[2][2] = 16'sd19661;  // 1.2
-    cov[3][3] = 16'sd9830;   // 0.6
+    cov[0][0] = 64'sd4294967296;  // 1.0
+    cov[1][1] = 64'sd3435973836;  // 0.8
+    cov[2][2] = 64'sd5153960755;  // 1.2
+    cov[3][3] = 64'sd2576980377;  // 0.6
 
     start <= 1'b1;
     @(posedge clk);
@@ -57,7 +57,7 @@ module qr_solver_tb;
     check("weight3", weights[3] == 16'sd5748);
 
     // now exercise the Givens-rotation path with real off-diagonal correlation
-    cov[0][1] = 16'sd4000; cov[1][0] = 16'sd4000;
+    cov[0][1] = 64'sd1048576000; cov[1][0] = 64'sd1048576000;
     start <= 1'b1;
     @(posedge clk);
     start <= 1'b0;
