@@ -17,6 +17,7 @@ module hft_top #(
 
   order_event_t book_evt;
   logic [PRICE_LVL_W-1:0] best_price_idx [0:NUM_STOCKS-1];
+  logic [PRICE_W-1:0]     sample_price   [0:NUM_STOCKS-1];
   logic                   best_valid     [0:NUM_STOCKS-1];
 
   itch_parser parser (
@@ -26,7 +27,7 @@ module hft_top #(
 
   order_book_top books (
       .clk(clk), .rst(rst), .evt(book_evt),
-      .best_price_idx(best_price_idx), .best_valid(best_valid)
+      .best_price_idx(best_price_idx), .best_price(sample_price), .best_valid(best_valid)
   );
 
   logic all_valid;
@@ -34,11 +35,6 @@ module hft_top #(
     all_valid = 1'b1;
     for (int i = 0; i < NUM_STOCKS; i++) all_valid &= best_valid[i];
   end
-
-  logic [PRICE_W-1:0] sample_price [0:NUM_STOCKS-1];
-  always_comb
-    for (int i = 0; i < NUM_STOCKS; i++)
-      sample_price[i] = PRICE_W'(best_price_idx[i]) * PRICE_W'(PRICE_TICK);
 
   logic [31:0] sample_counter;
   logic        cov_start;

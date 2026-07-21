@@ -5,6 +5,7 @@ module order_book_top (
     input  logic                   rst,
     input  order_event_t           evt,
     output logic [PRICE_LVL_W-1:0] best_price_idx [0:NUM_STOCKS-1],
+    output logic [PRICE_W-1:0]     best_price     [0:NUM_STOCKS-1],
     output logic                   best_valid     [0:NUM_STOCKS-1]
 );
 
@@ -15,6 +16,7 @@ module order_book_top (
           .clk(clk), .rst(rst),
           .evt(evt),
           .best_price_idx(best_price_idx[i]),
+          .best_price(best_price[i]),
           .best_valid(best_valid[i])
       );
     end

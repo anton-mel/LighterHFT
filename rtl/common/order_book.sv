@@ -10,8 +10,11 @@ module order_book #(
     input  logic                    rst,
     input  order_event_t            evt,
     output logic [PRICE_LVL_W-1:0]  best_price_idx,
+    output logic [PRICE_W-1:0]      best_price,
     output logic                    best_valid
 );
+
+  assign best_price = price_base + PRICE_W'(best_price_idx) * PRICE_W'(PRICE_TICK);
 
   logic evt_valid_here;
   assign evt_valid_here = evt.valid && (evt.stock_idx == STOCK_ID);

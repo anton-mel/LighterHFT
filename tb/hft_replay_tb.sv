@@ -15,7 +15,7 @@ module hft_replay_tb;
   logic [7:0] ouch_data;
   logic ouch_valid, ouch_ready;
 
-  hft_top #(.SAMPLE_PERIOD(2000), .CAPITAL(1_000_000_00)) dut (
+  hft_top #(.SAMPLE_PERIOD(20000), .CAPITAL(1_000_000_00)) dut (
       .clk(clk), .rst(rst), .itch_data(itch_data), .itch_valid(itch_valid),
       .ouch_data(ouch_data), .ouch_valid(ouch_valid), .ouch_ready(ouch_ready)
   );
@@ -38,6 +38,22 @@ module hft_replay_tb;
     $fclose(fd);
     file_bytes = n;
     $display("loaded %0d bytes from %s", file_bytes, REPLAY_FILE);
+  end
+
+  logic prev_all_valid, prev_cov_done, prev_solver_done;
+  int   evt_count;
+
+  always_ff @(posedge clk) begin
+    if (dut.book_evt.valid) evt_count <= evt_count + 1;
+    prev_all_valid   <= dut.all_valid;
+    prev_cov_done    <= dut.cov_done;
+    prev_solver_done <= dut.solver_done;
+    if (dut.all_valid && !prev_all_valid)
+      $display("[t=%0t] all_valid went high (best_valid=%p)", $time, dut.best_valid);
+    if (dut.cov_done && !prev_cov_done)
+      $display("[t=%0t] cov_done (primed=%0d, overflow=%0d)", $time, dut.primed, dut.cov_overflow);
+    if (dut.solver_done && !prev_solver_done)
+      $display("[t=%0t] solver_done, weights=%p", $time, dut.weights);
   end
 
   always_ff @(posedge clk) begin
@@ -71,7 +87,7 @@ module hft_replay_tb;
 
     repeat (20000) @(posedge clk);
 
-    $display("REPLAY DONE: fed %0d bytes, saw %0d orders", file_bytes, order_count);
+    $display("REPLAY DONE: fed %0d bytes, saw %0d book events, %0d orders", file_bytes, evt_count, order_count);
     $finish;
   end
 
