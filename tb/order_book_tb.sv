@@ -6,13 +6,14 @@ module order_book_tb;
   logic rst;
   order_event_t evt;
   logic [PRICE_LVL_W-1:0] best_price_idx;
+  logic [PRICE_W-1:0]     best_price;
   logic                   best_valid;
 
   int errors = 0;
 
   order_book dut (
       .clk(clk), .rst(rst), .evt(evt),
-      .best_price_idx(best_price_idx), .best_valid(best_valid)
+      .best_price_idx(best_price_idx), .best_price(best_price), .best_valid(best_valid)
   );
 
   always #5 clk = ~clk;
@@ -45,18 +46,18 @@ module order_book_tb;
     rst = 0;
     @(posedge clk);
 
-    // three price levels, expect best (highest idx) to track the max
-    send(OP_ADD, 64'd1, 32'd500, 32'd10);   // price_idx 5
+    // first add sets this stock's price reference -- its own bucket is always 0
+    send(OP_ADD, 64'd1, 32'd500, 32'd10);   // price_idx 0 (this is the reference price)
     repeat (12) @(posedge clk);
-    check("best_after_add1", best_valid && best_price_idx == 8'd5);
+    check("best_after_add1", best_valid && best_price_idx == 8'd0 && best_price == 32'd500);
 
-    send(OP_ADD, 64'd2, 32'd1500, 32'd20);  // price_idx 15, higher
+    send(OP_ADD, 64'd2, 32'd1500, 32'd20);  // (1500-500)/100 = price_idx 10, higher
     repeat (12) @(posedge clk);
-    check("best_after_add2", best_valid && best_price_idx == 8'd15);
+    check("best_after_add2", best_valid && best_price_idx == 8'd10 && best_price == 32'd1500);
 
     send(OP_DELETE, 64'd2, 32'd0, 32'd0);
     repeat (12) @(posedge clk);
-    check("best_after_delete2", best_valid && best_price_idx == 8'd5);
+    check("best_after_delete2", best_valid && best_price_idx == 8'd0);
 
     send(OP_EXECUTE, 64'd1, 32'd0, 32'd10);
     repeat (12) @(posedge clk);
