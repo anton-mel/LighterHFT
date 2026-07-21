@@ -78,7 +78,9 @@ module order_book #(
         wr_addr = evt_q.order_id[ORDERTAB_ADDR_W-1:0];
 
         unique case (evt_q.op)
-          OP_ADD: begin
+          // bid side only (matches the reference design's stated scope) -- sell-side
+          // orders are never added, so a stale deep ask can't get stuck as "best".
+          OP_ADD: if (!evt_q.buy_sell) begin
             automatic logic [PRICE_LVL_W-1:0] pidx;
             if (!price_base_set) begin
               price_base     <= evt_q.price;

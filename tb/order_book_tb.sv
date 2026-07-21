@@ -22,6 +22,7 @@ module order_book_tb;
                        input logic [31:0] price, input logic [31:0] shares);
     evt.valid     <= 1'b1;
     evt.stock_idx <= '0;
+    evt.buy_sell  <= 1'b0;
     evt.op       <= op;
     evt.order_id <= oid;
     evt.price    <= price;
