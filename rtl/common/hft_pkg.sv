@@ -15,7 +15,13 @@ package hft_pkg;
 
   parameter int PRICE_LVL_W     = 8;
   parameter int PRICE_LEVELS    = 1 << PRICE_LVL_W;
-  parameter int PRICE_TICK      = 100;
+  // PRICE_TICK * PRICE_LEVELS bounds the total price range trackable relative to each
+  // stock's reference (set once, at its first order of the day) -- too narrow and every
+  // real stock saturates the ladder within minutes (verified against real NASDAQ data:
+  // 100 = $0.01/tick, $2.55 total range, saturated almost immediately). A real system
+  // would periodically rebase the reference instead of fixing it for the whole session;
+  // this is the cheaper fix for now.
+  parameter int PRICE_TICK      = 5000;
 
   parameter int FX_W            = 16;
   parameter int FX_FRAC         = 14;

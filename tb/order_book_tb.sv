@@ -47,13 +47,13 @@ module order_book_tb;
     @(posedge clk);
 
     // first add sets this stock's price reference -- its own bucket is always 0
-    send(OP_ADD, 64'd1, 32'd500, 32'd10);   // price_idx 0 (this is the reference price)
+    send(OP_ADD, 64'd1, 32'd50000, 32'd10);   // price_idx 0 (this is the reference price)
     repeat (12) @(posedge clk);
-    check("best_after_add1", best_valid && best_price_idx == 8'd0 && best_price == 32'd500);
+    check("best_after_add1", best_valid && best_price_idx == 8'd0 && best_price == 32'd50000);
 
-    send(OP_ADD, 64'd2, 32'd1500, 32'd20);  // (1500-500)/100 = price_idx 10, higher
+    send(OP_ADD, 64'd2, 32'd100000, 32'd20);  // (100000-50000)/5000 = price_idx 10, higher
     repeat (12) @(posedge clk);
-    check("best_after_add2", best_valid && best_price_idx == 8'd10 && best_price == 32'd1500);
+    check("best_after_add2", best_valid && best_price_idx == 8'd10 && best_price == 32'd100000);
 
     send(OP_DELETE, 64'd2, 32'd0, 32'd0);
     repeat (12) @(posedge clk);
