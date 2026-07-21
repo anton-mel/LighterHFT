@@ -40,8 +40,30 @@ package hft_pkg;
     logic                        buy_sell;
   } order_event_t;
 
-  function automatic logic [STOCK_IDX_W-1:0] locate_to_idx(input logic [STOCK_LOCATE_W-1:0] locate);
-    return STOCK_IDX_W'(locate % NUM_STOCKS);
+  // Exchange-assigned stock locate codes are arbitrary and session-specific -- a modulo
+  // mapping collides for real codes (verified against a real NASDAQ ITCH session). This
+  // table needs to be populated from that session's actual Stock Directory ('R') messages;
+  // these defaults are AAPL/AMZN/GOOGL/MSFT's codes for the 2019-01-30 sample dataset only.
+  parameter logic [STOCK_LOCATE_W-1:0] TARGET_LOCATES [0:NUM_STOCKS-1] = '{
+      16'd14, 16'd381, 16'd3420, 16'd5217
+  };
+
+  typedef struct packed {
+    logic                   valid;
+    logic [STOCK_IDX_W-1:0] idx;
+  } stock_match_t;
+
+  function automatic stock_match_t locate_to_idx(input logic [STOCK_LOCATE_W-1:0] locate);
+    stock_match_t result;
+    result.valid = 1'b0;
+    result.idx   = '0;
+    for (int i = 0; i < NUM_STOCKS; i++) begin
+      if (locate == TARGET_LOCATES[i]) begin
+        result.valid = 1'b1;
+        result.idx   = STOCK_IDX_W'(i);
+      end
+    end
+    return result;
   endfunction
 
 endpackage

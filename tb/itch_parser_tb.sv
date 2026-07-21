@@ -24,7 +24,7 @@ module itch_parser_tb;
   initial begin
     queue = '{
       8'd0, 8'd36, "A",
-      8'h00, 8'h05,             // stock locate
+      8'h00, 8'h0E,             // stock locate (14 -> TARGET_LOCATES[0])
       8'h00, 8'h00,             // tracking number
       8'h00, 8'h00, 8'h00, 8'h00, 8'h00, 8'h00, // timestamp
       8'hAA, 8'hBB, 8'hCC, 8'hDD, 8'h11, 8'h22, 8'h33, 8'h44, // order ref number
@@ -34,13 +34,13 @@ module itch_parser_tb;
       8'h00, 8'h01, 8'hE2, 8'h08, // price = 123400
 
       8'd0, 8'd19, "D",
-      8'h00, 8'h05,
+      8'h00, 8'h0E,
       8'h00, 8'h00,
       8'h00, 8'h00, 8'h00, 8'h00, 8'h00, 8'h00,
       8'hAA, 8'hBB, 8'hCC, 8'hDD, 8'h11, 8'h22, 8'h33, 8'h44,
 
       8'd0, 8'd23, "X",
-      8'h00, 8'h09,
+      8'h01, 8'h7D,             // stock locate (381 -> TARGET_LOCATES[1])
       8'h00, 8'h00,
       8'h00, 8'h00, 8'h00, 8'h00, 8'h00, 8'h00,
       8'h00, 8'h00, 8'h00, 8'h00, 8'h00, 8'h00, 8'h00, 8'h42,
@@ -82,7 +82,7 @@ module itch_parser_tb;
 
     @(posedge clk iff evt_valid);
     check("add.op",        evt.op == OP_ADD);
-    check("add.stock_idx", evt.stock_idx == locate_to_idx(16'd5));
+    check("add.stock_idx", evt.stock_idx == 2'd0);
     check("add.order_id",  evt.order_id == 64'hAABBCCDD11223344);
     check("add.buy_sell",  evt.buy_sell == 1'b0);
     check("add.shares",    evt.shares == 32'd100);
