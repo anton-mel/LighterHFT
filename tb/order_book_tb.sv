@@ -52,9 +52,9 @@ module order_book_tb;
     repeat (12) @(posedge clk);
     check("best_after_add1", best_valid && best_price_idx == 8'd0 && best_price == 32'd50000);
 
-    send(OP_ADD, 64'd2, 32'd100000, 32'd20);  // (100000-50000)/5000 = price_idx 10, higher
+    send(OP_ADD, 64'd2, 32'd100000, 32'd20);  // (100000-50000)/500 = price_idx 100, higher
     repeat (12) @(posedge clk);
-    check("best_after_add2", best_valid && best_price_idx == 8'd10 && best_price == 32'd100000);
+    check("best_after_add2", best_valid && best_price_idx == 8'd100 && best_price == 32'd100000);
 
     send(OP_DELETE, 64'd2, 32'd0, 32'd0);
     repeat (12) @(posedge clk);

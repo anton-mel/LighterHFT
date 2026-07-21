@@ -21,7 +21,7 @@ package hft_pkg;
   // 100 = $0.01/tick, $2.55 total range, saturated almost immediately). A real system
   // would periodically rebase the reference instead of fixing it for the whole session;
   // this is the cheaper fix for now.
-  parameter int PRICE_TICK      = 5000;
+  parameter int PRICE_TICK      = 500;
 
   parameter int FX_W            = 16;
   parameter int FX_FRAC         = 14;
