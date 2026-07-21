@@ -46,6 +46,7 @@ module qr_solver (
   state_e state;
   int pivot, target, bsub_i;
   logic signed [FX_W+3:0] sum_v;
+  logic norm_pass;
 
   always_ff @(posedge clk) begin
     if (rst) begin
@@ -106,25 +107,30 @@ module qr_solver (
           automatic logic signed [FX_W+3:0] acc;
           acc = {{4{qtv[bsub_i][FX_W-1]}}, qtv[bsub_i]};
           for (int k = bsub_i+1; k < NUM_STOCKS; k++) acc = acc - fx_mul(r[bsub_i][k], v[k]);
-          v[bsub_i] <= fx_t'($signed({acc, {FX_FRAC{1'b0}}}) / $signed(r[bsub_i][bsub_i]));
+          // a zero pivot means an under-determined (e.g. all-zero) covariance input; park
+          // that row's weight at zero rather than divide by zero.
+          v[bsub_i] <= (r[bsub_i][bsub_i] == 0) ? fx_t'(0) :
+                       fx_t'($signed({acc, {FX_FRAC{1'b0}}}) / $signed(r[bsub_i][bsub_i]));
 
           if (bsub_i == 0) begin
-            sum_v <= '0;
-            state <= S_NORMALIZE;
+            norm_pass <= 1'b0;
+            state     <= S_NORMALIZE;
           end else begin
             bsub_i <= bsub_i - 1;
           end
         end
 
         S_NORMALIZE: begin
-          if (sum_v == 0) begin
+          if (!norm_pass) begin
             automatic logic signed [FX_W+3:0] total;
             total = 0;
             for (int i = 0; i < NUM_STOCKS; i++) total = total + $signed(v[i]);
-            sum_v <= total;
+            sum_v     <= total;
+            norm_pass <= 1'b1;
           end else begin
             for (int i = 0; i < NUM_STOCKS; i++)
-              weights[i] <= fx_t'($signed({v[i], {FX_FRAC{1'b0}}}) / $signed(sum_v));
+              weights[i] <= (sum_v == 0) ? fx_t'(0) :
+                            fx_t'($signed({v[i], {FX_FRAC{1'b0}}}) / $signed(sum_v));
             done  <= 1'b1;
             state <= S_IDLE;
           end
