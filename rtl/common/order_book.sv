@@ -24,10 +24,20 @@ module order_book #(
 
   slot_t table_mem [0:ORDERTAB_DEPTH-1];
 
-  function automatic logic [PRICE_LVL_W-1:0] price_to_idx(input logic [PRICE_W-1:0] price);
-    logic [PRICE_W-1:0] capped;
-    capped = (price > PRICE_W'(PRICE_TICK * (PRICE_LEVELS - 1))) ?
-             PRICE_W'(PRICE_TICK * (PRICE_LEVELS - 1)) : price;
+  // Real prices are absolute (e.g. $150.00), but the ladder only has PRICE_LEVELS buckets --
+  // so it tracks price *relative to* this stock's first-seen price, not from zero. Matches
+  // how real low-latency books stay fine-grained without needing an absolute-price-sized ladder.
+  logic [PRICE_W-1:0] price_base;
+  logic               price_base_set;
+
+  function automatic logic [PRICE_LVL_W-1:0] price_to_idx(input logic [PRICE_W-1:0] price,
+                                                            input logic [PRICE_W-1:0] base);
+    logic signed [PRICE_W:0] rel;
+    logic [PRICE_W-1:0]      capped;
+    rel    = $signed({1'b0, price}) - $signed({1'b0, base});
+    capped = (rel < 0) ? '0 :
+             (rel > PRICE_W'(PRICE_TICK * (PRICE_LEVELS - 1))) ? PRICE_W'(PRICE_TICK * (PRICE_LEVELS - 1)) :
+             rel[PRICE_W-1:0];
     return PRICE_LVL_W'(capped / PRICE_TICK);
   endfunction
 
@@ -55,41 +65,50 @@ module order_book #(
   );
 
   always_ff @(posedge clk) begin
-    ladder_valid <= 1'b0;
-    if (valid_q) begin
-      automatic logic [ORDERTAB_ADDR_W-1:0] wr_addr;
-      wr_addr = evt_q.order_id[ORDERTAB_ADDR_W-1:0];
+    if (rst) begin
+      price_base_set <= 1'b0;
+      ladder_valid   <= 1'b0;
+    end else begin
+      ladder_valid <= 1'b0;
+      if (valid_q) begin
+        automatic logic [ORDERTAB_ADDR_W-1:0] wr_addr;
+        wr_addr = evt_q.order_id[ORDERTAB_ADDR_W-1:0];
 
-      unique case (evt_q.op)
-        OP_ADD: begin
-          automatic logic [PRICE_LVL_W-1:0] pidx;
-          pidx = price_to_idx(evt_q.price);
-          table_mem[wr_addr] <= '{occupied: 1'b1, price_idx: pidx, shares: evt_q.shares};
-          ladder_idx   <= pidx;
-          ladder_delta <= $signed({1'b0, evt_q.shares});
-          ladder_valid <= 1'b1;
-        end
+        unique case (evt_q.op)
+          OP_ADD: begin
+            automatic logic [PRICE_LVL_W-1:0] pidx;
+            if (!price_base_set) begin
+              price_base     <= evt_q.price;
+              price_base_set <= 1'b1;
+            end
+            pidx = price_to_idx(evt_q.price, price_base_set ? price_base : evt_q.price);
+            table_mem[wr_addr] <= '{occupied: 1'b1, price_idx: pidx, shares: evt_q.shares};
+            ladder_idx   <= pidx;
+            ladder_delta <= $signed({1'b0, evt_q.shares});
+            ladder_valid <= 1'b1;
+          end
 
-        OP_CANCEL, OP_EXECUTE: begin
-          automatic logic [SHARES_W-1:0] removed, remaining;
-          removed   = (evt_q.shares > rd_slot.shares) ? rd_slot.shares : evt_q.shares;
-          remaining = rd_slot.shares - removed;
-          table_mem[wr_addr].shares   <= remaining;
-          table_mem[wr_addr].occupied <= (remaining != 0);
-          ladder_idx   <= rd_slot.price_idx;
-          ladder_delta <= -$signed({1'b0, removed});
-          ladder_valid <= rd_slot.occupied;
-        end
+          OP_CANCEL, OP_EXECUTE: begin
+            automatic logic [SHARES_W-1:0] removed, remaining;
+            removed   = (evt_q.shares > rd_slot.shares) ? rd_slot.shares : evt_q.shares;
+            remaining = rd_slot.shares - removed;
+            table_mem[wr_addr].shares   <= remaining;
+            table_mem[wr_addr].occupied <= (remaining != 0);
+            ladder_idx   <= rd_slot.price_idx;
+            ladder_delta <= -$signed({1'b0, removed});
+            ladder_valid <= rd_slot.occupied;
+          end
 
-        OP_DELETE: begin
-          table_mem[wr_addr].occupied <= 1'b0;
-          ladder_idx   <= rd_slot.price_idx;
-          ladder_delta <= -$signed({1'b0, rd_slot.shares});
-          ladder_valid <= rd_slot.occupied;
-        end
+          OP_DELETE: begin
+            table_mem[wr_addr].occupied <= 1'b0;
+            ladder_idx   <= rd_slot.price_idx;
+            ladder_delta <= -$signed({1'b0, rd_slot.shares});
+            ladder_valid <= rd_slot.occupied;
+          end
 
-        default: ;
-      endcase
+          default: ;
+        endcase
+      end
     end
   end
 
