@@ -30,9 +30,3 @@ not yet installed as of this writing.
 source /nfs/roberts/project/pi_lz484/am3785/vivado_install/Xilinx/Vivado/2023.1/settings64.sh
 vivado -mode batch -source scripts/synth.tcl
 ```
-
-## Workflow
-
-- `main` is protected; all work lands via PR from `feature/*` branches.
-- Commits: keyword-only messages, no prose, no AI co-author trailer.
-- Code: no comments except single-liners where the why is non-obvious.
