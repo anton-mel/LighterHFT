@@ -17,8 +17,14 @@ module order_book #(
   logic evt_valid_here;
   assign evt_valid_here = evt.valid && (evt.stock_idx == STOCK_ID);
 
+  // order_id is 64-bit but the table is only ORDERTAB_DEPTH-deep, so a direct-mapped index
+  // (low bits of order_id) collides for real, large order-reference-number volumes -- the
+  // tag lets a collision be detected and dropped instead of silently corrupting whichever
+  // other order now occupies that slot (verified against real NASDAQ data: millions of
+  // orders in a session guarantee frequent collisions against a 4096-entry table).
   typedef struct packed {
     logic                   occupied;
+    logic [ORDER_ID_W-1:0]  tag;
     logic [PRICE_LVL_W-1:0] price_idx;
     logic [SHARES_W-1:0]    shares;
   } slot_t;
@@ -95,7 +101,7 @@ module order_book #(
             end else begin
               pidx = price_to_idx(evt_q.price, price_base);
             end
-            table_mem[wr_addr] <= '{occupied: 1'b1, price_idx: pidx, shares: evt_q.shares};
+            table_mem[wr_addr] <= '{occupied: 1'b1, tag: evt_q.order_id, price_idx: pidx, shares: evt_q.shares};
             ladder_idx   <= pidx;
             ladder_delta <= $signed({1'b0, evt_q.shares});
             ladder_valid <= 1'b1;
@@ -103,20 +109,26 @@ module order_book #(
 
           OP_CANCEL, OP_EXECUTE: begin
             automatic logic [SHARES_W-1:0] removed, remaining;
+            automatic logic                found;
+            found     = rd_slot.occupied && (rd_slot.tag == evt_q.order_id);
             removed   = (evt_q.shares > rd_slot.shares) ? rd_slot.shares : evt_q.shares;
             remaining = rd_slot.shares - removed;
-            table_mem[wr_addr].shares   <= remaining;
-            table_mem[wr_addr].occupied <= (remaining != 0);
+            if (found) begin
+              table_mem[wr_addr].shares   <= remaining;
+              table_mem[wr_addr].occupied <= (remaining != 0);
+            end
             ladder_idx   <= rd_slot.price_idx;
             ladder_delta <= -$signed({1'b0, removed});
-            ladder_valid <= rd_slot.occupied;
+            ladder_valid <= found;
           end
 
           OP_DELETE: begin
-            table_mem[wr_addr].occupied <= 1'b0;
+            automatic logic found;
+            found = rd_slot.occupied && (rd_slot.tag == evt_q.order_id);
+            if (found) table_mem[wr_addr].occupied <= 1'b0;
             ladder_idx   <= rd_slot.price_idx;
             ladder_delta <= -$signed({1'b0, rd_slot.shares});
-            ladder_valid <= rd_slot.occupied;
+            ladder_valid <= found;
           end
 
           default: ;

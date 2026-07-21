@@ -10,7 +10,7 @@ package hft_pkg;
   parameter int SHARES_W        = 32;
   parameter int PRICE_W         = 32;
 
-  parameter int ORDERTAB_ADDR_W = 12;
+  parameter int ORDERTAB_ADDR_W = 18;
   parameter int ORDERTAB_DEPTH  = 1 << ORDERTAB_ADDR_W;
 
   parameter int PRICE_LVL_W     = 8;
