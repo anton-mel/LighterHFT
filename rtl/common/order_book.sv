@@ -81,12 +81,20 @@ module order_book #(
           // bid side only (matches the reference design's stated scope) -- sell-side
           // orders are never added, so a stale deep ask can't get stuck as "best".
           OP_ADD: if (!evt_q.buy_sell) begin
-            automatic logic [PRICE_LVL_W-1:0] pidx;
-            if (!price_base_set) begin
+            automatic logic [PRICE_LVL_W-1:0]   pidx;
+            automatic logic signed [PRICE_W:0]  rel_to_base;
+            rel_to_base = $signed({1'b0, evt_q.price}) - $signed({1'b0, price_base});
+            // rebase whenever the reference can no longer reach this price -- real resting
+            // orders can be miles from the market (e.g. regulatory "stub quote" backstops
+            // far below the touch), so a reference fixed once at the first order of the day
+            // gets stuck permanently otherwise (verified against real NASDAQ data).
+            if (!price_base_set || rel_to_base > $signed(PRICE_W'(PRICE_TICK * (PRICE_LEVELS - 1)))) begin
               price_base     <= evt_q.price;
               price_base_set <= 1'b1;
+              pidx = '0;
+            end else begin
+              pidx = price_to_idx(evt_q.price, price_base);
             end
-            pidx = price_to_idx(evt_q.price, price_base_set ? price_base : evt_q.price);
             table_mem[wr_addr] <= '{occupied: 1'b1, price_idx: pidx, shares: evt_q.shares};
             ladder_idx   <= pidx;
             ladder_delta <= $signed({1'b0, evt_q.shares});

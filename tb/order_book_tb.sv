@@ -64,6 +64,12 @@ module order_book_tb;
     repeat (12) @(posedge clk);
     check("best_after_full_execute", !best_valid);
 
+    // price far beyond the current reference's reach (e.g. a real trading price arriving
+    // after the reference got stuck on a stub-quote-like outlier) should rebase, not saturate
+    send(OP_ADD, 64'd3, 32'd2000000, 32'd5);
+    repeat (12) @(posedge clk);
+    check("best_after_rebase", best_valid && best_price_idx == 8'd0 && best_price == 32'd2000000);
+
     if (errors == 0) $display("ALL TESTS PASSED");
     else $display("%0d TEST(S) FAILED", errors);
     $finish;
