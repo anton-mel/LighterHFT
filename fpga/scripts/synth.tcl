@@ -1,8 +1,8 @@
 set part "xcvm1802-vsva2197-2MP-e-S"
 
-set rtl_files [glob -nocomplain rtl/common/*.sv rtl/nasdaq/*.sv rtl/top/*.sv]
+set rtl_files [glob -nocomplain fpga/rtl/common/*.sv fpga/rtl/nasdaq/*.sv fpga/rtl/top/*.sv]
 read_verilog -sv $rtl_files
-read_xdc constraints/hft_top.xdc
+read_xdc fpga/constraints/hft_top.xdc
 
 synth_design -top hft_top -part $part
 
